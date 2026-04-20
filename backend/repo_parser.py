@@ -25,9 +25,16 @@ def clone_repo(repo_url):
     path = f"repos/{repo_name}"
 
     if os.path.exists(path):
-        # Force pull latest changes instead of serving stale cache
+        # Force delete old clone — Windows marks .git pack files as read-only,
+        # so we need a custom handler to strip that flag before removal.
         import shutil
-        shutil.rmtree(path)
+        import stat
+
+        def force_remove(func, fpath, _exc_info):
+            os.chmod(fpath, stat.S_IWRITE)
+            func(fpath)
+
+        shutil.rmtree(path, onerror=force_remove)
 
     Repo.clone_from(repo_url, path)
     return path
