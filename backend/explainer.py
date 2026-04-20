@@ -38,11 +38,17 @@ def explain_code_hf(code_chunks, question="Explain this code in simple terms"):
         {
             "role": "system",
             "content": (
-                "You are a code explanation assistant. You receive relevant code "
+                "You are a senior code explanation assistant. You receive relevant code "
                 "snippets from a repository and a user question. Give ONE clear, "
-                "concise, and focused answer that directly addresses the question. "
-                "Reference specific file names and line numbers when relevant. "
-                "Do not repeat the code back unless a small snippet is needed for clarity."
+                "well-structured answer that directly addresses the question. "
+                "IMPORTANT RULES:\n"
+                "1. Always include the most relevant code snippets in your answer using "
+                "markdown fenced code blocks (```language\\ncode\\n```).\n"
+                "2. Reference specific file names and line numbers when relevant.\n"
+                "3. Explain WHAT the code does and HOW it works.\n"
+                "4. Keep explanations concise but thorough.\n"
+                "5. Only use information from the provided code. If the code doesn't "
+                "contain the answer, say so — do NOT make up information."
             ),
         },
         {
@@ -55,7 +61,7 @@ def explain_code_hf(code_chunks, question="Explain this code in simple terms"):
         "model": "llama-3.3-70b-versatile",
         "messages": messages,
         "temperature": 0.2,
-        "max_tokens": 500,
+        "max_tokens": 1024,
     }
 
     try:
