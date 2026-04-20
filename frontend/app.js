@@ -233,6 +233,20 @@ async function loadArchitecture() {
             })),
         };
 
+        // Add link references to nodes for fast lookup
+        graphData.links.forEach(link => {
+            const a = graphData.nodes.find(n => n.id === link.source);
+            const b = graphData.nodes.find(n => n.id === link.target);
+            if (a && b) {
+                if (!a.neighbors) a.neighbors = [];
+                if (!b.neighbors) b.neighbors = [];
+                a.neighbors.push(b.id);
+                b.neighbors.push(a.id);
+            }
+        });
+
+        let hoverNode = null;
+
         // Render force-graph
         if (graphInstance) {
             graphInstance.graphData(graphData);
@@ -240,44 +254,104 @@ async function loadArchitecture() {
             graphInstance = ForceGraph()(canvasEl)
                 .graphData(graphData)
                 .backgroundColor("rgba(0,0,0,0)")
+                .nodeId('id')
                 .nodeColor(n => n.color)
                 .nodeLabel(n => `${n.id} (${n.language})`)
                 .nodeRelSize(6)
+                .onNodeHover(node => {
+                    hoverNode = node;
+                    // Trigger redraw to update opacities
+                    graphInstance
+                        .nodeColor(graphInstance.nodeColor())
+                        .linkColor(graphInstance.linkColor())
+                        .linkDirectionalParticles(graphInstance.linkDirectionalParticles());
+                })
+                .onNodeClick(node => {
+                    // Auto-pan and zoom to clicked node
+                    graphInstance.centerAt(node.x, node.y, 600);
+                    graphInstance.zoom(2, 600);
+                })
                 .nodeCanvasObject((node, ctx, globalScale) => {
+                    // Check dimming
+                    let isDimmed = false;
+                    if (hoverNode && hoverNode.id !== node.id && !(hoverNode.neighbors && hoverNode.neighbors.includes(node.id))) {
+                        isDimmed = true;
+                    }
+
+                    const opacity = isDimmed ? 0.15 : 1;
+                    
                     // Draw outer glowing aura
                     ctx.beginPath();
                     ctx.arc(node.x, node.y, 8, 0, 2 * Math.PI);
-                    ctx.fillStyle = node.color.replace('rgb', 'rgba').replace(')', ', 0.15)');
+                    ctx.fillStyle = isDimmed ? 'transparent' : node.color.replace('rgb', 'rgba').replace(')', ', 0.25)');
                     ctx.fill();
 
                     // Draw solid circle
                     const size = 5;
                     ctx.beginPath();
                     ctx.arc(node.x, node.y, size, 0, 2 * Math.PI);
-                    ctx.fillStyle = node.color;
+                    ctx.fillStyle = isDimmed ? `rgba(100,100,100,0.2)` : node.color;
                     ctx.fill();
 
-                    // Draw label always visible
-                    const label = node.label;
-                    const fontSize = Math.max(12 / globalScale, 3.5);
-                    ctx.font = `600 ${fontSize}px Inter, sans-serif`;
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "middle";
-                    ctx.fillStyle = "rgba(255,255,255,0.9)";
-                    ctx.fillText(label, node.x, node.y + size + fontSize + 2);
+                    // Draw label always visible if not dimmed or if scale is high
+                    if (!isDimmed || globalScale > 2.5) {
+                        const label = node.label;
+                        const fontSize = Math.max(12 / globalScale, 3.5);
+                        ctx.font = `600 ${fontSize}px Inter, sans-serif`;
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        ctx.fillStyle = `rgba(255,255,255,${opacity})`;
+                        ctx.fillText(label, node.x, node.y + size + fontSize + 2);
+                    }
                 })
-                .linkColor(() => "rgba(255,255,255,0.12)")
-                .linkDirectionalParticles(2)
-                .linkDirectionalParticleWidth(1.5)
+                .linkColor(link => {
+                    if (hoverNode) {
+                        const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+                        const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+                        if (sourceId === hoverNode.id || targetId === hoverNode.id) {
+                            return hoverNode.color; // Highlight active connection with the node's color
+                        }
+                        return "rgba(255,255,255,0.03)"; // Deep dim for rest
+                    }
+                    return "rgba(255,255,255,0.15)";
+                })
+                .linkDirectionalParticles(link => {
+                    if (hoverNode) {
+                        const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+                        const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+                        return (sourceId === hoverNode.id || targetId === hoverNode.id) ? 4 : 0;
+                    }
+                    return 2; // Normal state
+                })
+                .linkDirectionalParticleWidth(link => {
+                    if (hoverNode) {
+                        const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+                        const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+                        return (sourceId === hoverNode.id || targetId === hoverNode.id) ? 3 : 0;
+                    }
+                    return 1.5;
+                })
                 .linkDirectionalParticleSpeed(0.005)
                 .linkDirectionalArrowLength(3.5)
                 .linkDirectionalArrowRelPos(1)
                 .linkDirectionalArrowColor(() => "rgba(255,255,255,0.4)")
-                .linkWidth(1.5)
+                .linkWidth(link => {
+                    if (hoverNode) {
+                        const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+                        const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+                        return (sourceId === hoverNode.id || targetId === hoverNode.id) ? 2.5 : 0.5;
+                    }
+                    return 1.5;
+                })
                 .d3AlphaDecay(0.02)
                 .d3VelocityDecay(0.4)
                 .warmupTicks(60)
                 .cooldownTicks(200);
+
+            // Auto fit after init
+            setTimeout(() => {
+                graphInstance.zoomToFit(600, 50);
+            }, 500);
         }
 
     } catch (err) {
