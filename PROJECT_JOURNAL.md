@@ -46,3 +46,15 @@ This document tracks the evolution of the **AI Codebase Explainer** platform, su
 - **Dense Retrieval Fallacy Fix:** We found that querying "Summarize chunker.py" relied purely on vector math, occasionally retrieving chunks from entirely different files that just scored high on the semantic word "summary." 
    - *Solution:* Created a FAISS bypass (`file_path` query argument). If the UI explicitly clicks a file, the backend fetches the physical array of chunks native to that file and passes them directly to the LLM. 100% precision, zero hallucination.
 - **Architecture Visualization:** Overhauled the D3 Force-Graph aesthetic. Replaced flat node circles with glowing RGBA auras and added active animated directional particles to map codebase flow. 
+
+---
+
+## Phase 5: Production Bug Fixes
+**Goal:** Fix critical bugs discovered during live testing with real repositories.
+
+### Challenges Faced & Solutions:
+1. **Stale Repository Cache:** The `clone_repo()` function cached cloned repos in the `repos/` directory and never refreshed them. If a repository was updated (e.g., files deleted), the app still served the stale old clone with ghost files like `testscript.py`.
+   - *Solution:* Changed `repo_parser.py` to always `shutil.rmtree()` the old directory and do a clean re-clone. This guarantees every "Load Repo" click fetches the absolute latest state of the codebase.
+2. **Cross-Platform Path Mismatch:** The FAISS bypass for file summaries silently failed on Windows. `os.path.relpath()` returns backslash paths (`backend\architecture.py`), but the frontend sends forward-slash paths (`backend/architecture.py`). The strict equality check `==` found zero matches, causing the LLM to receive wrong context.
+   - *Solution:* Normalized both the requested path and all stored chunk paths to forward slashes before comparison, making matching platform-agnostic.
+

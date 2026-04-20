@@ -85,7 +85,12 @@ def query_code(q: str = Query(...), top_k: int = 3, file_path: str = None):
 
     if file_path:
         # BYPASS FAISS: User exactly requested a specific file, get native chunks.
-        results = [c for c in repo_chunks if c["file_path"] == file_path]
+        # Normalize path separators for cross-platform matching
+        norm_requested = file_path.replace("\\", "/").strip("/")
+        results = [
+            c for c in repo_chunks
+            if c["file_path"].replace("\\", "/").strip("/") == norm_requested
+        ]
         
         # If it happens to be huge, we just limit to Top N contiguous chunks to not blow context
         if len(results) > 15:

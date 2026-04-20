@@ -20,13 +20,16 @@ EXTENSION_LANGUAGE_MAP = {
 
 
 def clone_repo(repo_url):
-    """Clone a GitHub repository if not already cloned."""
+    """Clone a GitHub repository, or force-update if already cloned."""
     repo_name = repo_url.split("/")[-1].replace(".git", "")
     path = f"repos/{repo_name}"
 
-    if not os.path.exists(path):
-        Repo.clone_from(repo_url, path)
+    if os.path.exists(path):
+        # Force pull latest changes instead of serving stale cache
+        import shutil
+        shutil.rmtree(path)
 
+    Repo.clone_from(repo_url, path)
     return path
 
 
