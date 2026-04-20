@@ -244,33 +244,39 @@ async function loadArchitecture() {
                 .nodeLabel(n => `${n.id} (${n.language})`)
                 .nodeRelSize(6)
                 .nodeCanvasObject((node, ctx, globalScale) => {
-                    // Draw circle
-                    const size = 6;
+                    // Draw outer glowing aura
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, 8, 0, 2 * Math.PI);
+                    ctx.fillStyle = node.color.replace('rgb', 'rgba').replace(')', ', 0.15)');
+                    ctx.fill();
+
+                    // Draw solid circle
+                    const size = 5;
                     ctx.beginPath();
                     ctx.arc(node.x, node.y, size, 0, 2 * Math.PI);
                     ctx.fillStyle = node.color;
-                    ctx.shadowColor = node.color;
-                    ctx.shadowBlur = 8;
                     ctx.fill();
-                    ctx.shadowBlur = 0;
 
-                    // Draw label
+                    // Draw label always visible
                     const label = node.label;
-                    const fontSize = Math.max(10 / globalScale, 3);
-                    ctx.font = `500 ${fontSize}px Inter, sans-serif`;
+                    const fontSize = Math.max(12 / globalScale, 3.5);
+                    ctx.font = `600 ${fontSize}px Inter, sans-serif`;
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
-                    ctx.fillStyle = "rgba(240,240,245,0.85)";
-                    ctx.fillText(label, node.x, node.y + size + fontSize + 1);
+                    ctx.fillStyle = "rgba(255,255,255,0.9)";
+                    ctx.fillText(label, node.x, node.y + size + fontSize + 2);
                 })
-                .linkColor(() => "rgba(255,255,255,0.08)")
-                .linkDirectionalArrowLength(4)
+                .linkColor(() => "rgba(255,255,255,0.12)")
+                .linkDirectionalParticles(2)
+                .linkDirectionalParticleWidth(1.5)
+                .linkDirectionalParticleSpeed(0.005)
+                .linkDirectionalArrowLength(3.5)
                 .linkDirectionalArrowRelPos(1)
-                .linkDirectionalArrowColor(() => "rgba(255,255,255,0.15)")
-                .linkWidth(1)
-                .d3AlphaDecay(0.04)
-                .d3VelocityDecay(0.3)
-                .warmupTicks(50)
+                .linkDirectionalArrowColor(() => "rgba(255,255,255,0.4)")
+                .linkWidth(1.5)
+                .d3AlphaDecay(0.02)
+                .d3VelocityDecay(0.4)
+                .warmupTicks(60)
                 .cooldownTicks(200);
         }
 
@@ -355,7 +361,7 @@ async function selectFile(filePath, language, el) {
 
     try {
         const query = `Give a concise summary of the file ${filePath}. What does it do? What are its main functions/classes?`;
-        const res = await fetch(`${API_BASE}/query?q=${encodeURIComponent(query)}&top_k=1`);
+        const res = await fetch(`${API_BASE}/query?q=${encodeURIComponent(query)}&file_path=${encodeURIComponent(filePath)}&top_k=5`);
         const data = await res.json();
 
         if (data.explanation) {

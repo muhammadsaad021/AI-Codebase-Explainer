@@ -79,20 +79,31 @@ def load_repo(url: str = Query(...)):
 
 
 @app.get("/query")
-def query_code(q: str = Query(...), top_k: int = 3):
+def query_code(q: str = Query(...), top_k: int = 3, file_path: str = None):
     if not repo_chunks or repo_index is None:
         return {"error": "Load a repository first."}
 
-    # 1. Semantic search — retrieve top relevant chunks
-    results, distances = search_code(
-        query=q,
-        index=repo_index,
-        chunks=repo_chunks,
-        top_k=top_k,
-        embed_model=embed_model,
-    )
+    if file_path:
+        # BYPASS FAISS: User exactly requested a specific file, get native chunks.
+        results = [c for c in repo_chunks if c["file_path"] == file_path]
+        
+        # If it happens to be huge, we just limit to Top N contiguous chunks to not blow context
+        if len(results) > 15:
+            results = results[:15]
+            
+        if not results:
+            return {"error": f"Could not find exact path {file_path} in chunks."}
+    else:
+        # 1. Semantic search — retrieve top relevant chunks across all codebase
+        results, distances = search_code(
+            query=q,
+            index=repo_index,
+            chunks=repo_chunks,
+            top_k=top_k,
+            embed_model=embed_model,
+        )
 
-    # 2. Generate ONE unified explanation from all relevant chunks
+    # 2. Generate ONE unified explanation from all retrieved chunks
     explanation = explain_code_hf(results, q)
 
     # 3. Build source references
