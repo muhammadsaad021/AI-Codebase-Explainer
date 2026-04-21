@@ -472,12 +472,46 @@ function escapeHtml(text) {
 }
 
 function formatExplanation(text) {
-    // Very basic markdown-like formatting
-    return text
-        .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-        .replace(/`([^`]+)`/g, '<code style="background:rgba(99,102,241,0.1);padding:2px 6px;border-radius:4px;font-family:var(--font-mono);font-size:12px;">$1</code>')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\n/g, '<br>');
+    // Comprehensive markdown-to-HTML rendering
+    let html = text;
+
+    // Fenced code blocks (```lang\ncode\n```)
+    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+        const langLabel = lang ? `<span style="position:absolute;top:6px;right:10px;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">${lang}</span>` : '';
+        return `<div style="position:relative;"><pre style="background:var(--bg-primary);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:14px;margin:10px 0;overflow-x:auto;font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);line-height:1.6;">${langLabel}<code>${escapeHtml(code.trim())}</code></pre></div>`;
+    });
+
+    // Inline code
+    html = html.replace(/`([^`]+)`/g, '<code style="background:rgba(99,102,241,0.1);padding:2px 6px;border-radius:4px;font-family:var(--font-mono);font-size:12px;">$1</code>');
+
+    // Headers (### h3, ## h2)
+    html = html.replace(/^### (.+)$/gm, '<h4 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:16px 0 6px 0;">$1</h4>');
+    html = html.replace(/^## (.+)$/gm, '<h3 style="font-size:15px;font-weight:600;color:var(--text-primary);margin:18px 0 8px 0;">$1</h3>');
+
+    // Horizontal rules
+    html = html.replace(/^---$/gm, '<hr style="border:none;border-top:1px solid var(--border-subtle);margin:14px 0;">');
+
+    // Bold and italic
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+    // Numbered lists (1. item)
+    html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<div style="display:flex;gap:8px;margin:4px 0;padding-left:4px;"><span style="color:var(--accent-indigo);font-weight:600;min-width:18px;">$1.</span><span>$2</span></div>');
+
+    // Bullet lists (- item or * item)
+    html = html.replace(/^[\-\*]\s+(.+)$/gm, '<div style="display:flex;gap:8px;margin:3px 0;padding-left:4px;"><span style="color:var(--accent-indigo);">•</span><span>$1</span></div>');
+
+    // Line breaks
+    html = html.replace(/\n/g, '<br>');
+
+    // Clean up excessive <br> after block elements
+    html = html.replace(/<\/div><br>/g, '</div>');
+    html = html.replace(/<\/pre><\/div><br>/g, '</pre></div>');
+    html = html.replace(/<\/h3><br>/g, '</h3>');
+    html = html.replace(/<\/h4><br>/g, '</h4>');
+    html = html.replace(/<hr[^>]*><br>/g, '<hr style="border:none;border-top:1px solid var(--border-subtle);margin:14px 0;">');
+
+    return html;
 }
 
 function getIconClass(language) {

@@ -79,7 +79,8 @@ def load_repo(url: str = Query(...)):
 
 
 @app.get("/query")
-def query_code(q: str = Query(...), top_k: int = 3, file_path: str = None):
+def query_code(q: str = Query(...), top_k: int = 3, file_path: str = Query(None)):
+    print(f"[QUERY] q='{q[:50]}...' | file_path='{file_path}' | top_k={top_k}")
     if not repo_chunks or repo_index is None:
         return {"error": "Load a repository first."}
 
@@ -87,17 +88,33 @@ def query_code(q: str = Query(...), top_k: int = 3, file_path: str = None):
         # BYPASS FAISS: User exactly requested a specific file, get native chunks.
         # Normalize path separators for cross-platform matching
         norm_requested = file_path.replace("\\", "/").strip("/")
+        
+        # Try exact match first
         results = [
             c for c in repo_chunks
             if c["file_path"].replace("\\", "/").strip("/") == norm_requested
         ]
+        
+        # Fallback: try matching by filename ending (handles prefix mismatches)
+        if not results:
+            results = [
+                c for c in repo_chunks
+                if c["file_path"].replace("\\", "/").endswith(norm_requested)
+                or norm_requested.endswith(c["file_path"].replace("\\", "/"))
+            ]
+        
+        # Debug: log what we're matching against
+        if not results:
+            all_paths = list(set(c["file_path"] for c in repo_chunks))
+            print(f"[DEBUG] file_path bypass FAILED for: '{norm_requested}'")
+            print(f"[DEBUG] Available chunk paths: {all_paths[:20]}")
         
         # If it happens to be huge, we just limit to Top N contiguous chunks to not blow context
         if len(results) > 15:
             results = results[:15]
             
         if not results:
-            return {"error": f"Could not find exact path {file_path} in chunks."}
+            return {"error": f"Could not find exact path '{file_path}' in loaded chunks."}
     else:
         # 1. Semantic search — retrieve top relevant chunks across all codebase
         results, distances = search_code(
@@ -109,7 +126,7 @@ def query_code(q: str = Query(...), top_k: int = 3, file_path: str = None):
         )
 
     # 2. Generate ONE unified explanation from all retrieved chunks
-    explanation = explain_code_hf(results, q)
+    explanation = explain_code_hf(results, q, is_file_summary=bool(file_path))
 
     # 3. Build source references
     sources = [

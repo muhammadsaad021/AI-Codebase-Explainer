@@ -14,10 +14,42 @@ headers = {
     "Content-Type": "application/json",
 }
 
+# Separate system prompts for different use cases
+SUMMARY_SYSTEM_PROMPT = (
+    "You are a senior software engineer reviewing source code files. "
+    "You receive the FULL content of a specific source file and must give a structured summary.\n\n"
+    "FORMAT YOUR RESPONSE EXACTLY LIKE THIS:\n"
+    "1. Start with a one-sentence **Purpose** of the file.\n"
+    "2. List all key functions/classes with a brief description of each using bullet points.\n"
+    "3. Include the most important code snippet(s) using markdown fenced code blocks "
+    "(```language\\ncode\\n```).\n"
+    "4. End with a short **How it connects** section explaining how this file relates to the rest of the project.\n\n"
+    "RULES:\n"
+    "- Use markdown formatting: **bold** for emphasis, `backticks` for identifiers.\n"
+    "- Be concise but complete — cover every function/class in the file.\n"
+    "- ONLY use the provided code. Never invent or hallucinate content."
+)
 
-def explain_code_hf(code_chunks, question="Explain this code in simple terms"):
+QUESTION_SYSTEM_PROMPT = (
+    "You are a senior code explanation assistant. You receive relevant code "
+    "snippets retrieved from a repository and a developer's question.\n\n"
+    "FORMAT YOUR RESPONSE LIKE THIS:\n"
+    "1. Start with a direct, clear answer to the question.\n"
+    "2. Show the most relevant code snippet(s) using markdown fenced code blocks "
+    "(```language\\ncode\\n```). Only include the lines that matter — do NOT dump the entire file.\n"
+    "3. Explain HOW the code works step by step.\n"
+    "4. Reference specific file names and line numbers.\n\n"
+    "RULES:\n"
+    "- Use markdown formatting: **bold**, `backticks`, bullet points, numbered lists.\n"
+    "- Keep it focused — answer ONLY what was asked.\n"
+    "- ONLY use the provided code snippets. If the answer isn't in the code, say so."
+)
+
+
+def explain_code_hf(code_chunks, question="Explain this code in simple terms", is_file_summary=False):
     """
     Sends one or more code chunks to Groq (Llama 3.3 70B) for a unified explanation.
+    Uses different prompts for file summaries vs general questions.
     """
     # Build context from chunks
     if isinstance(code_chunks, str):
@@ -34,27 +66,11 @@ def explain_code_hf(code_chunks, question="Explain this code in simple terms"):
     else:
         context = str(code_chunks)
 
+    system_prompt = SUMMARY_SYSTEM_PROMPT if is_file_summary else QUESTION_SYSTEM_PROMPT
+
     messages = [
-        {
-            "role": "system",
-            "content": (
-                "You are a senior code explanation assistant. You receive relevant code "
-                "snippets from a repository and a user question. Give ONE clear, "
-                "well-structured answer that directly addresses the question. "
-                "IMPORTANT RULES:\n"
-                "1. Always include the most relevant code snippets in your answer using "
-                "markdown fenced code blocks (```language\\ncode\\n```).\n"
-                "2. Reference specific file names and line numbers when relevant.\n"
-                "3. Explain WHAT the code does and HOW it works.\n"
-                "4. Keep explanations concise but thorough.\n"
-                "5. Only use information from the provided code. If the code doesn't "
-                "contain the answer, say so — do NOT make up information."
-            ),
-        },
-        {
-            "role": "user",
-            "content": f"Question: {question}\n\nRelevant code:\n{context}",
-        },
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": f"Question: {question}\n\nRelevant code:\n{context}"},
     ]
 
     payload = {
