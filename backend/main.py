@@ -110,8 +110,8 @@ def query_code(q: str = Query(...), top_k: int = 3, file_path: str = Query(None)
             print(f"[DEBUG] Available chunk paths: {all_paths[:20]}")
         
         # If it happens to be huge, we just limit to Top N contiguous chunks to not blow context
-        if len(results) > 15:
-            results = results[:15]
+        if len(results) > 30:
+            results = results[:30]
             
         if not results:
             return {"error": f"Could not find exact path '{file_path}' in loaded chunks."}

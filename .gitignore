@@ -1,5 +1,6 @@
 # Environment
 .env
+.venv/
 
 # Python
 venv/
@@ -19,3 +20,9 @@ dist/
 
 # AI Models
 models/
+
+# Training artifacts
+training/checkpoints/
+
+# Type checker
+.pyre_configuration

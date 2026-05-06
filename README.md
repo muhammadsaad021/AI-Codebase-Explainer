@@ -1,29 +1,31 @@
-# AI Codebase Explainer 🧠💻
+# AI Codebase Explainer
 
 ![License](https://img.shields.io/badge/license-MIT-blue) ![Python](https://img.shields.io/badge/python-3.10%2B-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-green)
 
-A powerful, local, unified Retrieval-Augmented Generation (RAG) platform that allows you to instantly parse, visualize, and chat with any GitHub repository.
-
-Driven by a custom fine-tuned `all-MiniLM-L6-v2` dense retrieval model and powered by Groq's API for lightning-fast Llama-3 inference, this tool turns massive unfamiliar codebases into highly readable, interactive architectural graphs and AI-summarized insights.
+A local Retrieval-Augmented Generation (RAG) platform for parsing, visualizing, and querying any GitHub repository through natural language. Built on a custom fine-tuned dense retrieval model (`all-MiniLM-L6-v2`) and powered by Groq's Llama-3.3 70B inference API, the tool transforms unfamiliar codebases into interactive architectural graphs and structured AI-generated insights.
 
 ---
 
-## ✨ Features
+## Features
 
-- 🎯 **Zero-Hallucination File Summaries:** Directly click on any file in the File Explorer to natively inject its exact contents into the Large Language Model, bypassing semantic retrieval noise for 100% accuracy.
-- 🌌 **Premium D3 Architecture Graphs:** Visualize your codebase dependencies with a stunning WebGL-flavored Force Graph. Features interactive focus hovering, isolated proximity lighting, and animated data particles.
-- ⚡ **Adaptive Groq RAG Engine:** Ask natural language questions like *"Where is authentication handled?"* and receive deep, multi-chunk contextual answers powered by Llama-3 70B instantly.
-- 🧠 **Train Your Own Embeddings:** Includes a rigid, battle-tested ML Jupyter Notebook (`train_embeddings.ipynb`) that automatically parses your codebase to generate synthetic training datasets and rigorously fine-tunes the FAISS retrieval vectors using Contrastive Learning.
+- **Precise File Summaries:** Click any file in the explorer to inject its exact source content into the LLM, bypassing semantic retrieval entirely for deterministic, hallucination-free output.
+- **Interactive Dependency Graphs:** Visualize codebase architecture through a D3 Force-directed graph with proximity-based focus highlighting, animated directional particles, and per-language color coding.
+- **Natural Language Code Search:** Ask questions like *"Where is authentication handled?"* and receive multi-chunk contextual answers grounded in the actual source code, with file and line references.
+- **Custom Embedding Fine-Tuning:** Includes a complete ML pipeline for generating synthetic QA datasets and fine-tuning the FAISS retrieval vectors using contrastive learning, tailored to your codebase's domain vocabulary.
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Prerequisites
-Ensure you have Python 3.10+ installed. Next, create an API key at [Groq Cloud](https://console.groq.com/).
+
+- Python 3.10 or higher
+- A free API key from [Groq Cloud](https://console.groq.com/)
 
 ### 2. Installation
-Clone the repository and install the backend modules:
+
+Clone the repository and install dependencies:
+
 ```bash
 git clone https://github.com/muhammadsaad021/AI-Codebase-Explainer.git
 cd AI-Codebase-Explainer
@@ -31,39 +33,65 @@ cd AI-Codebase-Explainer
 python -m venv venv
 # Windows:
 venv\Scripts\activate
-# Mac/Linux:
+# macOS / Linux:
 source venv/bin/activate
 
 pip install -r requirements.txt
 ```
 
 ### 3. Environment Variables
-Create a `.env` file in the root directory and add your key:
+
+Create a `.env` file in the project root:
+
 ```env
 GROQ_API_KEY=gsk_your_groq_api_key_here
 ```
 
-### 4. Run the Engine
-Start up the FastAPI backend and static file server:
+### 4. Run the Server
+
+Start the FastAPI backend and static file server:
+
 ```bash
 uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
-Then simply open `http://127.0.0.1:8000` in your browser!
+
+Open `http://127.0.0.1:8000` in your browser.
 
 ---
 
-## 🛠️ Architecture
+## Architecture
 
-- **`backend/main.py`:** Master API controller mapping REST endpoints and intercepting exact-file retrieval overrides.
-- **`backend/search.py`:** Handles FAISS L2 flat indexing and cosine similarity matrix math.
-- **`backend/embeddings.py`:** transparently swaps between standard HuggingFace embeddings and your dynamically fine-tuned `models/` weights.
-- **`frontend/app.js`:** Pure Vanilla JS running D3-Force algorithms and HTTP pipeline controls.
+| Module | Responsibility |
+|---|---|
+| `backend/main.py` | FastAPI application controller. Routes REST endpoints, manages global FAISS index state, and handles the exact-file retrieval bypass for file summaries. |
+| `backend/explainer.py` | LLM inference layer. Constructs system prompts, manages Groq API communication with retry logic and exponential backoff, and enforces deterministic output. |
+| `backend/search.py` | Semantic search engine. Encodes queries via the embedding model and performs L2 nearest-neighbor lookup against the FAISS index. |
+| `backend/embeddings.py` | Embedding model loader. Transparently selects between the base HuggingFace model and a locally fine-tuned model if one exists in `models/`. |
+| `backend/chunker.py` | Source code splitter. Segments files into fixed-size line chunks with metadata (file path, language, line range) for indexing. |
+| `backend/repo_parser.py` | Repository ingestion. Clones Git repositories, walks the file tree, and filters for supported source code extensions across 15 languages. |
+| `backend/architecture.py` | Dependency graph builder. Parses language-specific import statements (Python, JS/TS, C/C++, Java, Go) and constructs a directed NetworkX graph. |
+| `frontend/app.js` | Client-side application. Manages the chat interface, file explorer, and D3 Force-graph rendering with interactive hover and focus mechanics. |
 
-## 📈 Fine-Tuning the Retrieval Model
-If you want the semantic search to uniquely understand your organization's internal jargon:
-1. Run `training/generate_dataset.py` to auto-fabricate 500+ QA pairs.
-2. Open `training/train_embeddings.ipynb`.
-3. Execute the ML blocks to automatically train, cross-validate, and map learning curves using `sklearn` and `sentence-transformers`.
+---
 
-## 📜 Project Origins
-For a detailed look at the journey, challenges with LLM quotas, and architectural refactoring, review our inner [PROJECT_JOURNAL.md](./PROJECT_JOURNAL.md).
+## Fine-Tuning the Retrieval Model
+
+To adapt the semantic search to domain-specific terminology:
+
+1. Run `training/generate_dataset.py` to synthesize 500+ QA/code pairs across multiple programming languages.
+2. Open `training/train_embeddings.ipynb` in Jupyter or VS Code.
+3. Execute the training cells to fine-tune, cross-validate, and evaluate the model using `sentence-transformers` with `MultipleNegativesRankingLoss`.
+
+The fine-tuned model is automatically saved to `models/finetuned-explainer-model/` and loaded by the backend on the next startup.
+
+---
+
+## Project History
+
+For a detailed account of the development process, including LLM quota challenges, model deprecation workarounds, and architectural decisions, see the [Project Journal](./PROJECT_JOURNAL.md).
+
+---
+
+## License
+
+This project is licensed under the MIT License.

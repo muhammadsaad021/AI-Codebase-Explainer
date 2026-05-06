@@ -56,5 +56,26 @@ This document tracks the evolution of the **AI Codebase Explainer** platform, su
 1. **Stale Repository Cache:** The `clone_repo()` function cached cloned repos in the `repos/` directory and never refreshed them. If a repository was updated (e.g., files deleted), the app still served the stale old clone with ghost files like `testscript.py`.
    - *Solution:* Changed `repo_parser.py` to always `shutil.rmtree()` the old directory and do a clean re-clone. This guarantees every "Load Repo" click fetches the absolute latest state of the codebase.
 2. **Cross-Platform Path Mismatch:** The FAISS bypass for file summaries silently failed on Windows. `os.path.relpath()` returns backslash paths (`backend\architecture.py`), but the frontend sends forward-slash paths (`backend/architecture.py`). The strict equality check `==` found zero matches, causing the LLM to receive wrong context.
-   - *Solution:* Normalized both the requested path and all stored chunk paths to forward slashes before comparison, making matching platform-agnostic.
+    - *Solution:* Normalized both the requested path and all stored chunk paths to forward slashes before comparison, making matching platform-agnostic.
 
+---
+
+## Phase 6: Output Consistency & Completeness Overhaul
+**Goal:** Eliminate inconsistent, truncated, and incomplete LLM responses that degraded the user experience across both file summaries and chat queries.
+
+### Root Causes Identified:
+1. **Token Ceiling Truncation:** The `max_tokens` parameter was hardcoded to `1024` in `explainer.py`. Structured responses containing code snippets, function listings, and step-by-step explanations routinely exceeded this limit, causing the LLM to be cut off mid-sentence or mid-list — the single largest source of "incomplete" answers.
+2. **Non-Deterministic Temperature:** `temperature: 0.2` introduced enough sampling randomness that identical questions produced noticeably different responses on repeated runs.
+3. **Insufficient Context Retrieval:** The frontend sent `top_k=3` for chat queries and `top_k=5` for file summaries. For complex questions spanning multiple modules or large files with many chunks, the LLM received too little context to produce a thorough answer.
+4. **Aggressive Timeout:** The 30-second HTTP timeout to the Groq API was too short for large-context completions, causing silent failures returned as error strings.
+5. **No Retry Logic:** Transient 429 (rate limit) and 500-class server errors from Groq caused immediate failure with no recovery attempt.
+6. **Permissive Prompts:** System prompts used phrasing like "be concise" which the model interpreted as permission to skip functions and truncate coverage.
+
+### What We Implemented:
+- **Adaptive Token Limits:** Split `max_tokens` by use case — `4096` for file summaries (which need to cover every function), `2048` for question-answering (which needs room for code snippets and explanations).
+- **Deterministic Inference:** Set `temperature: 0.0` to guarantee identical inputs produce identical outputs. Same question, same answer, every time.
+- **Expanded Context Windows:** Increased `top_k` from 3 to 5 for chat queries, and from 5 to 10 for file summaries in the frontend. Raised the per-file chunk cap in `main.py` from 15 to 30 to prevent silent truncation of large source files.
+- **Extended Timeout:** Increased the Groq API request timeout from 30 seconds to 60 seconds.
+- **Retry with Exponential Backoff:** Added a 3-attempt retry loop in `explainer.py` that catches timeouts, 429 rate-limit responses, and 500-class server errors, sleeping with exponential backoff (`1.5s × 2^attempt`) between retries.
+- **Finish Reason Logging:** The backend now inspects the `finish_reason` field from the Groq response. If the model was truncated by the token limit (`finish_reason: "length"`), a warning is logged server-side for diagnostics.
+- **Hardened System Prompts:** Rewrote both the `SUMMARY_SYSTEM_PROMPT` and `QUESTION_SYSTEM_PROMPT` to explicitly demand complete coverage ("list ALL functions", "do NOT skip any", "always finish your response fully") and removed "be concise" language that was causing the model to self-censor.

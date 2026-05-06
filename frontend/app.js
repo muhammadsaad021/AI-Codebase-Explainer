@@ -27,6 +27,53 @@ function showToast(message, type = "info") {
     setTimeout(() => toast.classList.remove("show"), 3500);
 }
 
+// ===== UI RESET (called when loading a new repo) =====
+function resetUI() {
+    // 1. Reset chat — restore the welcome message
+    const chatMessages = document.getElementById("chat-messages");
+    chatMessages.innerHTML = `
+        <div class="welcome-message">
+            <div class="welcome-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="12" y1="7" x2="12" y2="13"/></svg>
+            </div>
+            <h2>Ask anything about the codebase</h2>
+            <p>Load a GitHub repo above, then ask questions like:</p>
+            <div class="example-queries">
+                <button class="example-chip" onclick="setQuery('What is the main entry point of this application?')">Main entry point?</button>
+                <button class="example-chip" onclick="setQuery('How does the authentication work?')">Authentication flow?</button>
+                <button class="example-chip" onclick="setQuery('Explain the database models')">Database models?</button>
+                <button class="example-chip" onclick="setQuery('What are the API endpoints?')">API endpoints?</button>
+            </div>
+        </div>`;
+
+    // 2. Reset file detail panel
+    document.getElementById("detail-header-text").textContent = "Select a file";
+    document.getElementById("file-detail-content").innerHTML = `
+        <div class="empty-state small">
+            <p>Click a file to get an AI summary</p>
+        </div>`;
+
+    // 3. Clear file list
+    document.getElementById("file-list").innerHTML = `
+        <div class="empty-state small">
+            <p>Load a repository to browse files</p>
+        </div>`;
+
+    // 4. Destroy old graph and reset canvas
+    if (graphInstance) {
+        graphInstance._destructor && graphInstance._destructor();
+        graphInstance = null;
+    }
+    const graphCanvas = document.getElementById("graph-canvas");
+    graphCanvas.innerHTML = "";
+    graphCanvas.style.display = "none";
+    document.getElementById("graph-empty").style.display = "";
+    document.getElementById("graph-legend").classList.add("hidden");
+
+    // 5. Disable send button until new repo finishes loading
+    document.getElementById("send-btn").disabled = true;
+}
+
 // ===== REPO LOADING =====
 async function loadRepo() {
     const input = document.getElementById("repo-url-input");
@@ -37,6 +84,9 @@ async function loadRepo() {
         showToast("Please enter a GitHub repository URL", "error");
         return;
     }
+
+    // Clear all stale UI from the previous repo
+    resetUI();
 
     // Show loading state
     btn.querySelector(".btn-text").textContent = "Loading...";
@@ -166,7 +216,7 @@ async function sendQuery() {
     addMessage("loading");
 
     try {
-        const res = await fetch(`${API_BASE}/query?q=${encodeURIComponent(query)}&top_k=3`);
+        const res = await fetch(`${API_BASE}/query?q=${encodeURIComponent(query)}&top_k=5`);
         const data = await res.json();
 
         if (data.error) {
@@ -435,7 +485,7 @@ async function selectFile(filePath, language, el) {
 
     try {
         const query = `Give a concise summary of the file ${filePath}. What does it do? What are its main functions/classes?`;
-        const res = await fetch(`${API_BASE}/query?q=${encodeURIComponent(query)}&file_path=${encodeURIComponent(filePath)}&top_k=5`);
+        const res = await fetch(`${API_BASE}/query?q=${encodeURIComponent(query)}&file_path=${encodeURIComponent(filePath)}&top_k=10`);
         const data = await res.json();
 
         if (data.explanation) {
