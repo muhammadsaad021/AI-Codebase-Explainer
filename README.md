@@ -77,6 +77,16 @@ Open `http://127.0.0.1:8000` in your browser.
 
 ---
 
+## Technologies Used
+
+- **Backend framework:** FastAPI, Uvicorn (Python 3.10+)
+- **Machine Learning & NLP:** Sentence-Transformers (`all-MiniLM-L6-v2`), PyTorch, Scikit-learn, Pandas, FAISS (CPU)
+- **Large Language Model API:** Groq Cloud API (Llama-3.3-70B, Llama-3.1-8B)
+- **Frontend & Visualizations:** Vanilla JavaScript, HTML/CSS, D3.js (Force-directed graphs)
+- **Data & Parsing:** GitPython, NetworkX, Jupyter Notebook
+
+---
+
 ## Architecture
 
 | Module | Responsibility |
@@ -105,7 +115,7 @@ The base model is trained on general English text and performs poorly on code re
 2. `training/train_embeddings.ipynb` — Fine-tunes the model using `MultipleNegativesRankingLoss`, evaluates with `InformationRetrievalEvaluator` (MRR@10, NDCG@10, Accuracy@1/5/10), and saves the best checkpoint.
 3. `backend/embeddings.py` — Loads the saved model automatically on backend startup.
 
-The fine-tuned model improves MRR@10 from approximately 0.42 (base model) to approximately 0.74, a 76% relative improvement on the code retrieval task.
+The fine-tuned model improves MRR@10 from approximately 0.95 (base model) to approximately 0.97 on the code retrieval task, while Accuracy@1 improved from 0.89 to 0.95.
 
 ---
 

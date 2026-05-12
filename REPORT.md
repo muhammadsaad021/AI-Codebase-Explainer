@@ -200,15 +200,15 @@ Several configurations were evaluated on the validation set during training:
 
 | Configuration | MRR@10 | Accuracy@1 | Notes |
 |---|---|---|---|
-| Base `all-MiniLM-L6-v2` (no fine-tuning) | ~0.42 | ~0.36 | Baseline — model has no code domain knowledge |
-| Fine-tuned, 2 epochs, batch_size=8 | ~0.61 | ~0.53 | Significant improvement over baseline |
-| Fine-tuned, 4 epochs, batch_size=8 | ~0.74 | ~0.65 | Best generalization — selected configuration |
-| Fine-tuned, 10 epochs, batch_size=8 | ~0.71 | ~0.62 | Slight degradation from overfitting |
+| Base `all-MiniLM-L6-v2` (no fine-tuning) | ~0.95 | ~0.89 | Baseline |
+| Fine-tuned, 2 epochs, batch_size=8 | ~0.96 | ~0.93 | Improvement over baseline |
+| Fine-tuned, 4 epochs, batch_size=8 | ~0.97 | ~0.95 | Best generalization — selected configuration |
+| Fine-tuned, 10 epochs, batch_size=8 | ~0.96 | ~0.94 | Slight degradation from overfitting |
 | Fine-tuned, 4 epochs, batch_size=16 | Crashed | — | Windows/Jupyter multiprocessing failure with DataLoader |
 
 ### Key Findings
 
-1. **Fine-tuning provides a dramatic improvement over the base model.** The base `all-MiniLM-L6-v2` model, trained only on general English text, achieves approximately 42% MRR@10 on the code retrieval task. After fine-tuning on our synthetic dataset, this rises to approximately 74% — a 76% relative improvement.
+1. **Fine-tuning provides an improvement over the strong base model.** The base `all-MiniLM-L6-v2` model already achieves a strong baseline of approximately 95% MRR@10 on the code retrieval task. After fine-tuning on our synthetic dataset, this further rises to approximately 97%, and Accuracy@1 improves from 89% to 95%.
 
 2. **4 epochs is the optimal training duration** for a dataset of this size. Beyond 4 epochs, validation metrics plateau or slightly regress.
 
